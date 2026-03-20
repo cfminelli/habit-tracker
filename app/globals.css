@@ -25,3 +25,9 @@ body {
     text-wrap: balance;
   }
 }
+
+input[type="range"] {
+  accent-color: #334155;
+  width: 100%;
+  cursor: pointer;
+}
