@@ -33,6 +33,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const saved = await addDayRecord(record as DayRecord);
-  return NextResponse.json(saved, { status: 201 });
+  try {
+    const saved = await addDayRecord(record as DayRecord);
+    return NextResponse.json(saved, { status: 201 });
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
