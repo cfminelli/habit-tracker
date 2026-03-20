@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { Redis } from "@upstash/redis";
 
 export type DayRecord = {
   date: string; // "YYYY-MM-DD"
@@ -16,11 +17,14 @@ export type HabitsDB = DayRecord[];
 
 const KV_KEY = "habits";
 
-// Use Redis when env vars are present (production), otherwise fall back to
-// the local JSON file (development).
-const USE_KV = !!(
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-);
+// Vercel may set either UPSTASH_* (Marketplace integration) or
+// KV_REST_API_* (Storage tab). Support both.
+const REDIS_URL =
+  process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
+const REDIS_TOKEN =
+  process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
+
+const USE_KV = !!(REDIS_URL && REDIS_TOKEN);
 
 // ─── File-system backend (development) ───────────────────────────────────────
 
@@ -37,16 +41,16 @@ function writeFile(data: HabitsDB): void {
 
 // ─── Upstash Redis backend (production) ──────────────────────────────────────
 
+function getRedis(): Redis {
+  return new Redis({ url: REDIS_URL!, token: REDIS_TOKEN! });
+}
+
 async function readKV(): Promise<HabitsDB> {
-  const { Redis } = await import("@upstash/redis");
-  const redis = Redis.fromEnv();
-  return (await redis.get<HabitsDB>(KV_KEY)) ?? [];
+  return (await getRedis().get<HabitsDB>(KV_KEY)) ?? [];
 }
 
 async function writeKV(data: HabitsDB): Promise<void> {
-  const { Redis } = await import("@upstash/redis");
-  const redis = Redis.fromEnv();
-  await redis.set(KV_KEY, data);
+  await getRedis().set(KV_KEY, data);
 }
 
 // ─── Unified API ─────────────────────────────────────────────────────────────
